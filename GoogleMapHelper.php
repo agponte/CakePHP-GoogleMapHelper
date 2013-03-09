@@ -57,6 +57,7 @@ class GoogleMapHelper extends AppHelper {
 	var $defaultWindowText = 'My Position';							// Default text inside the information window
 
 	//DEFAULT MARKER OPTIONS (method addMarker())
+    var $defaultInfoWindowSingle = true;                               // Boolean to show only one Info Window at a time
 	var $defaultInfoWindowM = true;								// Boolean to show an information window when you click the marker or not
 	var $defaultWindowTextM = 'Marker info window';						// Default text inside the information window
 	var $defaultmarkerTitleM = "Title";							// Default marker title (HTML title tag)
@@ -108,6 +109,7 @@ class GoogleMapHelper extends AppHelper {
 		$map = "<div id='$id' style='width:$width; height:$height; $style'></div>";
 		$map .="
 			<script>
+                var prev;
 				var markers = new Array();
 				var markersIds = new Array();
 				var geocoder = new google.maps.Geocoder();
@@ -201,26 +203,54 @@ class GoogleMapHelper extends AppHelper {
 		        {$id}.setZoom(3);
 		    }";
 
-		    $map .= "
-			function setMarker(map, id, position, title, icon, shadow, content, showInfoWindow){
-				var index = markers.length;
-				markersIds[markersIds.length] = id;
-				markers[index] = new google.maps.Marker({
-		            position: position,
-		            map: map,
-		            icon: icon,
-		            shadow: shadow,
-		            title:title
-		        });
-		     	if(content != '' && showInfoWindow){
-			     	var infowindow = new google.maps.InfoWindow({
-			            content: content
-			        });
-			     	google.maps.event.addListener(markers[index], 'click', function() {
-						infowindow.open(map,markers[index]);
-        			});
-		        }
-		     }";
+          // We are using different setMarker functions depending on defaultInfoWindowSingle
+		    if ($this->defaultInfoWindowSingle) {
+                // Allow for one infoWindow at a time
+                $map .= "
+                function setMarker(map, id, position, title, icon, shadow, content, showInfoWindow){
+                    var index = markers.length;
+                    markersIds[markersIds.length] = id;
+                    markers[index] = new google.maps.Marker({
+                        position: position,
+                        map: map,
+                        icon: icon,
+                        shadow: shadow,
+                        title:title
+                    });
+                    if(content != '' && showInfoWindow){
+                        var infowindow = new google.maps.InfoWindow({
+                            content: content
+                        });
+                        google.maps.event.addListener(markers[index], 'click', function() {
+                            if (prev) prev.close();
+                            prev=infowindow;
+                            infowindow.open(map,markers[index]);
+                        });
+                    }
+                 }";
+            } else {
+                // Allow for opening multiple infoWindows
+                $map .= "
+                function setMarker(map, id, position, title, icon, shadow, content, showInfoWindow){
+                    var index = markers.length;
+                    markersIds[markersIds.length] = id;
+                    markers[index] = new google.maps.Marker({
+                        position: position,
+                        map: map,
+                        icon: icon,
+                        shadow: shadow,
+                        title:title
+                    });
+                    if(content != '' && showInfoWindow){
+                        var infowindow = new google.maps.InfoWindow({
+                            content: content
+                        });
+                        google.maps.event.addListener(markers[index], 'click', function() {
+                            infowindow.open(map,markers[index]);
+                        });
+                    }
+                 }";
+            }
 
 		$map .= "</script>";
 		return $map;
